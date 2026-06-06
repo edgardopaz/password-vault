@@ -43,41 +43,87 @@ func NewService(store Store, masterPassword string) (*Service, error) {
 }
 
 func (s *Service) AddEntry(entry Entry) error {
-	// encrypt the entry using the key
-	encryptedUsername, err := encrypt([]byte(entry.Username), s.key)
+	encryptedEntry, err := s.encryptEntry(entry)
 	if err != nil {
 		return err
-	}
-	encryptedURL, err := encrypt([]byte(entry.URL), s.key)
-	if err != nil {
-		return err
-	}
-	encryptedNotes, err := encrypt([]byte(entry.Notes), s.key)
-	if err != nil {
-		return err
-	}
-	encryptedPassword, err := encrypt([]byte(entry.Password), s.key)
-	if err != nil {
-		return err
-	}
-	encryptedEntry := EncryptedEntry{
-		ID: entry.ID,
-		Username: encryptedUsername,
-		Password: encryptedPassword,
-		URL: encryptedURL,
-		Notes: encryptedNotes,
 	}
 	return s.store.AddEntry(encryptedEntry)
 }
+
 func (s *Service) GetEntry(id int) (Entry, error) {
-	return Entry{}, nil	
+	// decrypt the entry using the key
+	encryptedEntry, err := s.store.GetEntry(id)
+	if err != nil {
+		return Entry{}, err
+	}
+	
+	decryptedUsername, err := decrypt(encryptedEntry.Username, s.key)
+	if err != nil {
+		return Entry{}, err
+	}
+	decryptedPassword, err := decrypt(encryptedEntry.Password, s.key)
+	if err != nil {
+		return Entry{}, err
+	}
+	decryptedURL, err := decrypt(encryptedEntry.URL, s.key)
+	if err != nil {
+		return Entry{}, err
+	}
+	decryptedNotes, err := decrypt(encryptedEntry.Notes, s.key)
+	if err != nil {
+		return Entry{}, err
+	}
+	return Entry{ID: id, Username: string(decryptedUsername), Password: string(decryptedPassword), URL: string(decryptedURL), Notes: string(decryptedNotes)}, nil
 }
-func (s *Service) ListEntries() ([]Entry, error) {
-	return []Entry{}, nil
+
+func (s *Service) ListEntries() ([]EntryMetadata, error) {
+	encryptedEntries, err := s.store.ListEntries()
+	if err != nil {
+		return []EntryMetadata{}, err
+	}
+	entries := make([]EntryMetadata, len(encryptedEntries))
+	for i, encryptedEntry := range encryptedEntries {	
+		decryptedUsername, err := decrypt(encryptedEntry.Username, s.key)
+		if err != nil {
+			return []EntryMetadata{}, err
+		}
+		decryptedURL, err := decrypt(encryptedEntry.URL, s.key)
+		if err != nil {
+			return []EntryMetadata{}, err
+		}
+		entries[i] = EntryMetadata{ID: encryptedEntry.ID, Username: string(decryptedUsername), URL: string(decryptedURL)}
+	}
+	return entries, nil
 }
 func (s *Service) UpdateEntry(entry Entry) error {
-	return nil
+	encryptedEntry, err := s.encryptEntry(entry)
+	if err != nil {
+		return err
+	}
+	return s.store.UpdateEntry(encryptedEntry)
 }
-func (s *Service) DeleteEntry(id int) error {
-	return nil
+
+func (s* Service) DeleteEntry(id int) error {
+	return s.store.DeleteEntry(id)
+}
+
+func (s* Service) encryptEntry(entry Entry) (EncryptedEntry, error) {
+
+	encryptedUsername, err := encrypt([]byte(entry.Username), s.key)
+	if err != nil {
+		return EncryptedEntry{}, err
+	}
+	encryptedURL, err := encrypt([]byte(entry.URL), s.key)
+	if err != nil {
+		return EncryptedEntry{}, err
+	}
+	encryptedNotes, err := encrypt([]byte(entry.Notes), s.key)
+	if err != nil {
+		return EncryptedEntry{}, err
+	}
+	encryptedPassword, err := encrypt([]byte(entry.Password), s.key)
+	if err != nil {
+		return EncryptedEntry{}, err
+	}
+	return EncryptedEntry{ID: entry.ID, Username: encryptedUsername, Password: encryptedPassword, URL: encryptedURL, Notes: encryptedNotes}, nil
 }

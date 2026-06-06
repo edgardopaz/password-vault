@@ -16,6 +16,12 @@ type EncryptedEntry struct {
 	Notes    []byte `json:"notes" db:"notes"`
 }
 
+type EntryMetadata struct {
+	ID   int    `json:"id" db:"id"`
+	Username string `json:"username" db:"username"`
+	URL      string `json:"url" db:"url"`
+}
+
 type EncryptionMetadata struct {
 	ID   int    `json:"id" db:"id"`
 	Salt []byte `json:"salt" db:"salt"`
