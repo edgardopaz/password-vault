@@ -1,7 +1,7 @@
 package vault
 
 // need a function that will take the master password and parse it to generate a 32-bit key
-// this key will be passed into a function that will use AEC-GCM to encrypt and decrypt the bytes
+// this key will be passed into a function that will use AES-GCM to encrypt and decrypt the bytes
 
 import (
 	"crypto/cipher"
