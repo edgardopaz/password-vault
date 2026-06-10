@@ -21,3 +21,18 @@ func Execute() {
 		os.Exit(1)
 	}
 }
+
+func openVault() (*vault.Service, error) {
+	// resolve db path
+	
+	store, err := storage.NewSQLiteStore(password)
+	if err != nil {
+		return err
+	}
+	return nil
+	password := os.Getenv("VAULT_PASSWORD")
+	if password == "" {
+		return nil, errors.New("vault password is not set")
+	}
+	return vault.NewService(store, password)
+}
