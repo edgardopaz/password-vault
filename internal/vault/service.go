@@ -10,7 +10,8 @@ type Store interface {
 	UpdateEntry(entry EncryptedEntry) error
 	DeleteEntry(id int) error
 	GetSalt() ([]byte, error)
-	SaveSalt(salt []byte) error
+	SaveSaltAndVerifier(salt []byte, verifier []byte) error
+	GetVerifier() ([]byte, error)
 }
 
 type Service struct {
@@ -19,26 +20,41 @@ type Service struct {
 }
 
 var ErrNoSalt = errors.New("no salt found")
+var ErrWrongPassword = errors.New("wrong password")
+var verifierPlaintext = []byte("password-vault-v1")
 
 func NewService(store Store, masterPassword string) (*Service, error) {
 	salt, err := store.GetSalt()
-
 	switch {
-	case errors.Is(err,ErrNoSalt):
-
+	case errors.Is(err, ErrNoSalt):
+		// FIRST RUN: create salt, derive key, build + store the verifier
 		salt, err = generateSalt()
 		if err != nil {
 			return nil, err
 		}
-
-		if err := store.SaveSalt(salt); err != nil {
+		key := deriveKey(masterPassword, salt)
+		verifier, err := encrypt(verifierPlaintext, key)
+		if err != nil {
 			return nil, err
 		}
+		if err := store.SaveSaltAndVerifier(salt, verifier); err != nil {
+			return nil, err
+		}
+		return &Service{store: store, key: key}, nil
+
 	case err != nil:
 		return nil, err
 	}
 
+	// RETURNING USER: derive key, then prove it with the verifier
 	key := deriveKey(masterPassword, salt)
+	verifier, err := store.GetVerifier()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := decrypt(verifier, key); err != nil {
+		return nil, ErrWrongPassword   // wrong key → GCM auth failure → wrong password
+	}
 	return &Service{store: store, key: key}, nil
 }
 

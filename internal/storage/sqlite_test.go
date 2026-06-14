@@ -33,19 +33,29 @@ func TestGetSaltOnFreshDBReturnsErrNoSalt(t *testing.T) {
 	}
 }
 
-func TestSaveAndGetSalt(t *testing.T) {
+func TestSaveAndGetSaltAndVerifier(t *testing.T) {
 	store := newTestStore(t)
 	salt := []byte("0123456789abcdef")
+	verifier := []byte("fake-verifier-blob")
 
-	if err := store.SaveSalt(salt); err != nil {
-		t.Fatalf("SaveSalt: %v", err)
+	if err := store.SaveSaltAndVerifier(salt, verifier); err != nil {
+		t.Fatalf("SaveSaltAndVerifier: %v", err)
 	}
-	got, err := store.GetSalt()
+
+	gotSalt, err := store.GetSalt()
 	if err != nil {
 		t.Fatalf("GetSalt: %v", err)
 	}
-	if !bytes.Equal(got, salt) {
-		t.Fatalf("salt round-trip mismatch: got %x want %x", got, salt)
+	if !bytes.Equal(gotSalt, salt) {
+		t.Fatalf("salt round-trip mismatch: got %x want %x", gotSalt, salt)
+	}
+
+	gotVerifier, err := store.GetVerifier()
+	if err != nil {
+		t.Fatalf("GetVerifier: %v", err)
+	}
+	if !bytes.Equal(gotVerifier, verifier) {
+		t.Fatalf("verifier round-trip mismatch: got %x want %x", gotVerifier, verifier)
 	}
 }
 
@@ -118,5 +128,27 @@ func TestDeleteEntry(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Fatalf("expected 0 entries after delete, got %d", len(entries))
+	}
+}
+
+// End-to-end proof of the verifier: a second unlock with a different master
+// password must be rejected before any data can be touched.
+func TestVerifierRejectsWrongPassword(t *testing.T) {
+	store := newTestStore(t)
+
+	// First run establishes the salt + verifier under password "correct".
+	if _, err := vault.NewService(store, "correct"); err != nil {
+		t.Fatalf("first NewService: %v", err)
+	}
+
+	// Returning with the right password must succeed.
+	if _, err := vault.NewService(store, "correct"); err != nil {
+		t.Fatalf("NewService with correct password: %v", err)
+	}
+
+	// Returning with a wrong password must fail with ErrWrongPassword.
+	_, err := vault.NewService(store, "wrong")
+	if !errors.Is(err, vault.ErrWrongPassword) {
+		t.Fatalf("expected ErrWrongPassword, got %v", err)
 	}
 }

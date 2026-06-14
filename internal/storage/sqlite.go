@@ -95,10 +95,19 @@ func (s *SQLiteStore) GetSalt() ([]byte, error) {
 	return salt, nil
 }
 
-func (s *SQLiteStore) SaveSalt(salt []byte) error {
-	_, err := s.db.Exec("INSERT OR REPLACE INTO metadata (id, salt) VALUES (1, ?)", salt)
+func (s *SQLiteStore) SaveSaltAndVerifier(salt []byte, verifier []byte) error {
+	_, err := s.db.Exec("INSERT OR REPLACE INTO metadata (id, salt, verifier) VALUES (1, ?, ?)", salt, verifier)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *SQLiteStore) GetVerifier() ([]byte, error) {
+	var verifier []byte
+	err := s.db.QueryRow("SELECT verifier FROM metadata WHERE id = 1").Scan(&verifier)
+	if err != nil {
+		return nil, err
+	}
+	return verifier, nil
 }
