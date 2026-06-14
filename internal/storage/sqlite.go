@@ -7,6 +7,7 @@ import (
 	_ "modernc.org/sqlite"
 	"password_vault/internal/vault"
 	"errors"
+	"os"
 )
 
 type SQLiteStore struct {
@@ -25,6 +26,9 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	}
 
 	if err := migrate(db); err != nil {
+		return nil, err
+	}
+	if err := os.Chmod(dbPath, 0600); err != nil {
 		return nil, err
 	}
 	return &SQLiteStore{db: db}, nil
