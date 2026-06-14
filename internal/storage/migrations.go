@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS entries (
 
 const createMetadataTable = `CREATE TABLE IF NOT EXISTS metadata (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    salt BLOB NOT NULL
+    salt BLOB NOT NULL,
+    verifier BLOB NOT NULL
 )
 `
 
